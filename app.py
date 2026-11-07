@@ -68,7 +68,7 @@ st.markdown(
     """
 **Was lässt das Ziel zu, und wie findet man das vor dem Einsatz?** Dasselbe Beispiel wie in Stück 10: **m Aufgaben** auf **n Personen**, jede in der **Regelzeit** oder in **Überstunden**; die **Kennzahl** misst nur die Regelzeit,
 die **wahren Kosten** zählen die Überstunden mit Zuschlag. Meist kennt man die Wahrheit vorher nicht. Zwei Wege: das **Red Team** sucht im **Spielraum** des Ziels (alle zulässigen Pläne, die höchstens `s` über dem Optimum liegen)
-den schlimmsten Plan; der **Extremwert-Test** fragt, **wo das Optimum in den Größen liegt, die das Ziel nicht misst**. Die **Zielkarte** fasst beides auf einer Seite zusammen.
+den schlimmsten Plan (das setzt voraus, dass man die wahren Kosten der Pläne kennt oder schätzen kann; die Demo bewertet mit den wahren Kosten); der **Extremwert-Test** fragt, **wo das Optimum in den Größen liegt, die das Ziel nicht misst**, und braucht die wahren Kosten nicht. Die **Zielkarte** fasst beides auf einer Seite zusammen.
 
 Weiter unten: **🔬 Die Zielkarte**, **🔬 Der Spielraum**, **🔬 Das Red Team**, **🔬 Trefferquote und Fehlalarm**, **🔬 Alarm und Schaden**, **🚧 Wo die Annahmen enden** und der Expander **📐 Mathematische Formulierung**.
 """
@@ -95,7 +95,7 @@ with st.sidebar:
     st.markdown("**Instanz**")
     n = st.slider("Personen n", *bounds("n_slider"), key="n_slider", help="Alle (2n)^m Pläne werden aufgezählt (bis 279 936).")
     m = st.slider("Aufgaben m", *bounds("m_slider"), key="m_slider")
-    family = st.selectbox("Kosten", list(range(len(C.FAMILIES))), key="family_select", format_func=lambda i: C.FAMILIES[i], help="Beim Personeneffekt ist eine Person für fast alle Aufgaben billiger.")
+    family = st.selectbox("Kosten", list(range(len(C.FAMILIES))), key="family_select", format_func=lambda i: C.FAMILIES[i], help="Beim Personeneffekt ist eine Person im Mittel bei etwa 60 % der Aufgaben die billigste (bei 3 Personen und 7 Aufgaben, über die 20 festen Instanzen gemessen).")
     seed = st.number_input("Zufalls-Seed der Instanz", *bounds("seed_input"), key="seed_input", step=1)
     st.button("🎲 Neue Instanz generieren", width="stretch", on_click=randomize_seed)
     st.markdown("**Kapazität und Preis**")
@@ -152,7 +152,7 @@ if c is not None:
     for goal_key, cc in allc.items():
         cmp_md.append(f"| {C.GOAL_NAMES[goal_key]} | {cc['pick']['kpi']} | {vtext(cc['pick']['true'])} | {pct(cc['loss'])} | {pct(cc['max_rank'], 0)} | {'**ja**' if cc['alarm'] else 'nein'} | {cc['space']['size']}, {de(cc['space']['ratio_worst'], 2)}-fach |")
     st.markdown("\n".join(cmp_md))
-    st.caption("Die drei Ziele nebeneinander (gleiche Instanz, gleiche Schwelle und Toleranz): ein gebrochenes Ziel schlägt an und hat einen schädlichen Spielraum, ein repariertes nicht.")
+    st.caption("Die drei Ziele nebeneinander (gleiche Instanz, gleiche Schwelle und Toleranz): in der Voreinstellung schlägt ein gebrochenes Ziel an und hat einen schädlichen Spielraum, ein repariertes meist nicht (bei Schwelle 90 % in 0 bis 2 von 20 Instanzen); die Presets zeigen Ausnahmen.")
 st.markdown("---")
 
 st.subheader("🔬 Der Spielraum")
@@ -182,7 +182,7 @@ getattr(st, kind)(text)
 st.markdown("---")
 
 st.subheader("🔬 Trefferquote und Fehlalarm")
-st.caption("Wie oft schlägt der Test an, wenn das Ziel gebrochen ist (Treffer), und wie oft, wenn es repariert ist (Fehlalarm)? Je Schwelle, über 20 feste Instanzen je Familie; die Größe „höchste Überstundenlast einer Person“ ist der blinde Fleck: sie schlägt nie an.")
+st.caption("Wie oft schlägt der Test an, wenn das Ziel gebrochen ist (Treffer), und wie oft, wenn es repariert ist (Fehlalarm)? Je Schwelle, über 20 feste Instanzen je Familie; die Größe „höchste Überstundenlast einer Person“ ist der blinde Fleck: sie schlägt bei Schwelle 90 % und 50 % Überstundenkapazität nicht an, weil sie an der Kapazitätsgrenze mit vielen Plänen gleichauf liegt.")
 if st.toggle("Trefferquote und Fehlalarm über feste Instanzen nachrechnen (je Ziel und Schwelle)", value=False, key="sweep_alarm"):
     sw = _sweep()
     res = {fam: summary_alarm(recs) for fam, recs in sw.items()}
@@ -218,10 +218,10 @@ st.markdown(
 | Annahme | Was passiert, wenn sie verletzt ist | Wer setzt an |
 |---|---|---|
 | **Das Beispiel von Stück 10** | Der Fehler „Last wandert in eine nicht gemessene Größe“ ist durch den Aufbau groß; andere Fehlerarten (fehlende Nebenbedingung, Rauschen, Instabilität) sind hier nicht getestet | Stück 9, 11 |
-| **Die Liste der Größen steht fest** | Der Test sieht nur, was auf der Liste steht; eine Größe, die an eine Grenze stößt (hier die höchste Überstundenlast), schlägt nie an: ein blinder Fleck | Stück 8 (Überoptimierung) |
+| **Die Liste der Größen steht fest** | Der Test sieht nur, was auf der Liste steht; eine Größe, deren Wert an eine Grenze stößt (hier die höchste Überstundenlast), kann bei hoher Schwelle nicht anschlagen: ein blinder Fleck | Stück 8 (Überoptimierung) |
 | **Schwelle 90 %** | Sie wurde an denselben Instanzen gewählt wie die Zählung; die zweite Seed-Menge prüft sie gegen, ersetzt aber keine Prüfung am echten Betrieb | – |
 | **Genug zulässige Pläne** | Bei N zulässigen Plänen ist der höchste Rang 1 − 1/(2N): bei wenigen Plänen kann der Test nicht anschlagen | – |
-| **Spielraum = Zielwert nah am Optimum** | Die Toleranz in Kosteneinheiten ist gewählt; in anderen Modellen ist der Spielraum größer, und das Red Team würde mehr finden | Stück 5 (Gleichstände) |
+| **Spielraum = Zielwert nah am Optimum** | Die Toleranz in Kosteneinheiten ist gewählt; mit größerer Toleranz ist der Spielraum größer, und das Red Team findet mehr (in diesem Modell bei unabhängigen Kosten im Mittel 0,19-fach des Optimums mehr bei Toleranz 10 gegen 0,04 bei Toleranz 0) | Stück 5 (Gleichstände) |
 | **Alle Pläne aufgezählt** | Bis 279 936 Pläne; bei großen Problemen braucht es einen Löser für die Spielraum-Suche | Dokumentation des Lösers |
 """
 )

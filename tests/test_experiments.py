@@ -80,7 +80,7 @@ def test_the_playroom_and_alarm_counts_run_when_switched_on():
         at.toggle(key=key).set_value(True).run()
         assert not at.exception, (key, [str(e) for e in at.exception])
     text = _texts(at)
-    assert "Spielraum (Median über Instanzen" in text and "Alarm je Schwelle" in text and "Spearman-Korrelation 0,91 über 80 Instanzen" in text
+    assert "Spielraum (Median über Instanzen" in text and "Alarm je Schwelle" in text and "Spearman-Korrelation 0,91 über 80 Punkte (20 Instanzen mal 4 Überstundenanteile)" in text
 
 
 def test_the_holdout_runs_when_switched_on():

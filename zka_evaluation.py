@@ -203,7 +203,7 @@ def verdict_card(c: dict | None, thr: int) -> tuple[str, str]:
     if hits:
         cells = ", ".join(f"{r['label']} (Rang {pct(r['rank'], 0)})" for r in hits)
         return "warning", (f"**Alarm:** Das Optimum gehört unter den {c['n_ok']} zulässigen Plänen zu den obersten {100 - thr} % in: {cells} (Schwelle {thr} %). "
-                           "Das Ziel misst diese Größen nicht: der Plan nutzt, was ihm niemand begrenzt hat.")
+                           "Das Ziel misst diese Größen nicht; der Plan liegt in ihnen auffällig hoch. Ob das schadet, zeigt erst der Spielraum und der Vergleich mit den wahren Kosten.")
     if c["max_rank_possible"] * 100 < thr:
         return "info", (f"Kein Alarm, aber der Test kann hier nicht anschlagen: bei nur {c['n_ok']} zulässigen Plänen ist der höchste Rang {pct(c['max_rank_possible'], 1)}, unter der Schwelle von {thr} %.")
     return "success", f"Kein Alarm: in keiner der vier nicht gemessenen Größen liegt das Optimum im obersten Bereich (höchster Rang {pct(c['max_rank'], 0)}, Schwelle {thr} %)."
@@ -218,7 +218,7 @@ def verdict_space(c: dict | None) -> tuple[str, str]:
     if sp["harmful"] == 0:
         return "success", base + f"Kein Mitglied ist schädlich (mindestens das {de(C.HARM_PCT / 100, 2)}-fache)."
     return "warning", base + (f"**{sp['harmful']} von {sp['size']}** Plänen {'ist' if sp['harmful'] == 1 else 'sind'} schädlich (mindestens das {de(C.HARM_PCT / 100, 2)}-fache); eine Stichprobe von {sp['k95']} "
-                              f"{'Plan' if sp['k95'] == 1 else 'Plänen'} aus dem Spielraum findet mit {C.CONFIDENCE_PCT} % einen.")
+                              f"{'Plan' if sp['k95'] == 1 else 'Plänen'} (mit Zurücklegen) aus dem Spielraum findet mit mindestens {C.CONFIDENCE_PCT} % einen.")
 
 
 def verdict_redteam(c: dict | None) -> tuple[str, str]:
@@ -257,5 +257,5 @@ def verdict_dose_sweep(res: dict) -> tuple[str, str]:
     parts = []
     for fam, s in res.items():
         cells = ", ".join(f"{fz} %: Alarm in {s[fz]['alarm']} von {s[fz]['seeds']}, größter Rang Median {pct(s[fz]['rank'][1], 0)}, Schaden Median {pct(s[fz]['loss'][1])}" for fz in C.SWEEP_FZS)
-        parts.append(f"{C.FAMILIES[fam]}: Überstundenanteil {cells}; Spearman-Korrelation {de(s['spearman'], 2)} über {s['n']} Instanzen")
+        parts.append(f"{C.FAMILIES[fam]}: Überstundenanteil {cells}; Spearman-Korrelation {de(s['spearman'], 2)} über {s['n']} Punkte ({s[C.SWEEP_FZS[0]]['seeds']} Instanzen mal {len(C.SWEEP_FZS)} Überstundenanteile)")
     return "info", "Alarm und Schaden beim Ziel „nur Kennzahl“: " + ". ".join(parts) + "."

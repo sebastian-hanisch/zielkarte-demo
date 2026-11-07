@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from scipy.stats import spearmanr
 
 import zka_constants as C
 import zka_evaluation as ev
@@ -104,7 +105,7 @@ def test_alarm_claims(alarm):
     _claim("unabhängig 10 / 4 / **0** / 0 / 0; Person 10 / 5 / **0** / 0 / 0")
     per = lambda f: " / ".join(str(alarm[f]["kpi"]["alarm_q"][q]) for q in C.QUANTITIES)
     assert (per(0), per(1)) == ("16 / 20 / 19 / 0", "18 / 20 / 20 / 0") and all(alarm[f][g]["alarm_q"]["zmax"] == 0 for f in (0, 1) for g in C.GOALS)
-    _claim("unabhängig 16 / 20 / 19 / **0**; Person 18 / 20 / 20 / **0**: die gedeckelte Größe schlägt nie an (blinder Fleck)")
+    _claim("unabhängig 16 / 20 / 19 / **0**; Person 18 / 20 / 20 / **0**: die durch die Kapazitätsgrenze gedeckelte Größe schlägt hier (Schwelle 90 %, 50 % Überstundenkapazität) in 0 von 20 Instanzen an (blinder Fleck)")
     _claim("Fehlalarm 0 bis 2 von 20 bei Schwelle 90 %")
     _claim("Bei Schwelle 70 % schlägt der Test auch bei reparierten Zielen oft an (bis 13 von 20)")
     assert max(alarm[f][g]["alarm"][70] for f in (0, 1) for g in ("kpiz", "true")) == 13
@@ -126,7 +127,12 @@ def test_dose_claims(sw):
     assert cell(0) == "0 / 19 / 20 / 20; 0,0 % / 29,8 % / 73,1 % / 135,7 %" and cell(1) == "0 / 20 / 20 / 20; 0,0 % / 29,0 % / 49,1 % / 83,2 %"
     _claim("unabhängig 0 / 19 / 20 / 20; 0,0 % / 29,8 % / 73,1 % / 135,7 %; Person 0 / 20 / 20 / 20; 0,0 % / 29,0 % / 49,1 % / 83,2 %")
     assert all(d[f][0]["rank"] == (0.5, 0.5, 0.5) for f in (0, 1)) and [d[f]["spearman"] for f in (0, 1)] == pytest.approx([0.913, 0.915], abs=0.001) and d[0]["n"] == d[1]["n"] == 80
-    _claim("überall 50 %; **0,91** über 80 Instanzen (unabhängig und Person je)")
+    _claim("überall 50 %; **0,91** über 80 Punkte (20 Instanzen mal 4 Überstundenanteile; unabhängig und Person je)")
+    pooled = lambda f, key: [r["dose"][fz][key] for fz in C.SWEEP_FZS if fz for r in sw[f]]
+    ohne0 = lambda f: float(spearmanr(pooled(f, "max_rank"), pooled(f, "loss"))[0])
+    within =[float(spearmanr([r["dose"][fz]["max_rank"] for r in sw[f]], [r["dose"][fz]["loss"] for r in sw[f]])[0]) for f in (0, 1) for fz in C.SWEEP_FZS if fz]
+    assert [ev.de(ohne0(f), 2) for f in (0, 1)] == ["0,80", "0,80"] and ev.de(min(within), 2) == "0,26" and ev.de(max(within), 2) == "0,71"
+    _claim("sie kommt vor allem aus dem Unterschied zwischen den Anteilen (ohne 0 %: 0,80; innerhalb eines Anteils 0,26 bis 0,71)")
 
 
 def test_preset_claims():
@@ -158,11 +164,16 @@ def test_preset_claims():
     _claim("**3** zulässige Pläne, höchster Rang **83,3 %**: der Test kann bei Schwelle 90 % nicht anschlagen, das Optimum ist 18,4 % zu teuer")
 
 
-def test_correction_claims(space, alarm):
+def test_correction_claims(sw, space, alarm):
     assert space[0]["kpi"][0]["worst"] > space[0]["kpi"][0]["pick"] and d2(space[0]["kpi"][0]["worst"]) == "1,87" and d2(space[0]["kpi"][0]["pick"]) == "1,73"
-    _claim("(1,87 gegen 1,73)")
+    _claim("(Median 100 %, Minimum 33,3 % bei Toleranz 10)")
+    _claim("(höchstens 8 Ziehungen in 40 Instanzen)")
+    _claim("(Median 1,87 gegen 1,73)")
+    gain = lambda f, s: sum(r["goals"]["kpi"]["space"][s]["ratio_worst"] - r["goals"]["kpi"]["space"][s]["ratio_pick"] for r in sw[f]) / len(sw[f])
+    assert (d2(gain(0, 0)), d2(gain(0, 10))) == ("0,04", "0,19")
+    _claim("bei Toleranz 10 findet sie im Mittel 0,19-fach des Optimums mehr (bei Toleranz 0: 0,04, unabhängig)")
     assert d2(space[0]["kpiz"][0]["worst"]) == "1,05" and d2(space[0]["true"][0]["worst"]) == "1,00"
-    _claim("(1,87-fach beim gebrochenen, 1,05 beim teilweise reparierten, 1,00 beim wahren Ziel)")
+    _claim("schlechtestes Mitglied im Median 1,87-fach beim gebrochenen und 1,05-fach beim teilweise reparierten Ziel); beim wahren Ziel ist 1,00 bei Toleranz 0 per Definition")
     _claim("(Median 1 bis 5 Pläne)")
     _claim("(Treffer 20 von 20, Fehlalarm 0 bis 2 von 20 bei Schwelle 90 %)")
     _claim("`1 − 1/(2N)`")

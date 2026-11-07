@@ -18,7 +18,7 @@ def test_card_verdict_distinguishes_alarm_no_alarm_and_the_test_that_cannot_alar
     s = C.PRESETS[P_ALARM]["thr"]
     kind, text = ev.verdict_card(_card(P_ALARM), s)
     assert kind == "warning" and text == ("**Alarm:** Das Optimum gehört unter den 2218 zulässigen Plänen zu den obersten 10 % in: Überstunden-Stunden (Rang 98 %), Aufgaben in Überstunden (Rang 100 %), "
-                                          "Kosten in Überstunden (Rang 95 %) (Schwelle 90 %). Das Ziel misst diese Größen nicht: der Plan nutzt, was ihm niemand begrenzt hat.")
+                                          "Kosten in Überstunden (Rang 95 %) (Schwelle 90 %). Das Ziel misst diese Größen nicht; der Plan liegt in ihnen auffällig hoch. Ob das schadet, zeigt erst der Spielraum und der Vergleich mit den wahren Kosten.")
     assert ev.verdict_card(_card(P_TRUE), 90) == ("success", "Kein Alarm: in keiner der vier nicht gemessenen Größen liegt das Optimum im obersten Bereich (höchster Rang 69 %, Schwelle 90 %).")
     kind, text = ev.verdict_card(_card(P_SMALL), 90)
     assert kind == "info" and text == "Kein Alarm, aber der Test kann hier nicht anschlagen: bei nur 3 zulässigen Plänen ist der höchste Rang 83,3 %, unter der Schwelle von 90 %."
@@ -29,7 +29,7 @@ def test_card_verdict_distinguishes_alarm_no_alarm_and_the_test_that_cannot_alar
 def test_space_verdict_cases():
     kind, text = ev.verdict_space(_card(P_ALARM))
     assert kind == "warning" and text == ("Der Spielraum (zulässige Pläne bis 2 Kosteneinheiten über dem Optimum des Ziels) hat **2** Pläne; die wahren Kosten des schlechtesten Mitglieds sind das **1,97**-fache "
-                                          "des wahren Optimums, des gewählten Plans das 1,97-fache, des besten das 1,54-fache. **2 von 2** Plänen sind schädlich (mindestens das 1,25-fache); eine Stichprobe von 1 Plan aus dem Spielraum findet mit 95 % einen.")
+                                          "des wahren Optimums, des gewählten Plans das 1,97-fache, des besten das 1,54-fache. **2 von 2** Plänen sind schädlich (mindestens das 1,25-fache); eine Stichprobe von 1 Plan (mit Zurücklegen) aus dem Spielraum findet mit mindestens 95 % einen.")
     kind, text = ev.verdict_space(_card(P_TRUE))
     assert kind == "success" and text.endswith("Kein Mitglied ist schädlich (mindestens das 1,25-fache).") and "hat **1** Plan;" in text
     kind, text = ev.verdict_space(_card(P_WIDE))
@@ -56,4 +56,4 @@ def test_sweep_verdicts_carry_the_measured_numbers():
     assert "s = 0: Pläne im Median 1, schlechtestes / gewähltes / bestes Mitglied 1,87 / 1,73 / 1,66-fach, schädlich in 20 von 20" in text
     dose = {f: ev.summary_dose(r) for f, r in sw.items()}
     text = ev.verdict_dose_sweep(dose)[1]
-    assert "0 %: Alarm in 0 von 20" in text and "25 %: Alarm in 19 von 20" in text and "Spearman-Korrelation 0,91 über 80 Instanzen" in text
+    assert "0 %: Alarm in 0 von 20" in text and "25 %: Alarm in 19 von 20" in text and "Spearman-Korrelation 0,91 über 80 Punkte (20 Instanzen mal 4 Überstundenanteile)" in text
